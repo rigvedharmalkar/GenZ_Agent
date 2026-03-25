@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import anthropic
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,18 +16,56 @@ app = FastAPI(title="Gen Z English Tutor API", version="1.0.0")
 # Allow your frontend (running on localhost:3000 or 5173) to talk to this backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-    ],
+    # allow_origins=[
+    #     "http://localhost:3000",
+    #     "http://localhost:5173",
+    #     "http://127.0.0.1:3000",
+    #     "http://127.0.0.1:5173",
+    # ],
+    allow_origins=["*"],  # Allow all origins for development; restrict in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+
+def extract_json_from_text(text: str) -> str:
+    # allow simple JSON objects even if model wraps them in text or markdown fences
+    if not text:
+        return ""
+
+    cleaned = text.strip()
+    cleaned = cleaned.replace("```json", "").replace("```", "").strip()
+
+    if (cleaned.startswith("'") and cleaned.endswith("'")) or (cleaned.startswith('"') and cleaned.endswith('"')):
+        cleaned = cleaned[1:-1].strip()
+
+    # direct JSON path first
+    if cleaned.startswith("{") and cleaned.endswith("}"):
+        return cleaned
+
+    # fallback: extract substring between first { and last }
+    first = cleaned.find("{")
+    last = cleaned.rfind("}")
+    if first != -1 and last != -1 and first < last:
+        return cleaned[first : last + 1]
+
+    return cleaned
+
+
+def normalize_json_like(text: str) -> str:
+    # Normalize common model-output JSON mistakes (missing commas, trailing commas)
+    normalized = text
+
+    # remove trailing commas before object/array closes
+    normalized = re.sub(r",\s*(?=[}\]])", "", normalized)
+
+    # ensure there's a comma between ended object/array and next key
+    normalized = re.sub(r"(?<=[}\]])\s*(?=\")", ", ", normalized)
+
+    return normalized
 
 
 @app.get("/")
@@ -70,19 +109,26 @@ def chat(request: ChatRequest):
         raise HTTPException(status_code=502, detail=f"Claude API error: {str(e)}")
 
     raw_text = response.content[0].text.strip()
+    candidate_json = extract_json_from_text(raw_text)
 
     # Claude should always return JSON — parse it
     try:
-        data = json.loads(raw_text)
-    except json.JSONDecodeError:
-        # Fallback: if Claude slipped up and wrapped in markdown fences
-        cleaned = raw_text.replace("```json", "").replace("```", "").strip()
+        data = json.loads(candidate_json)
+    except json.JSONDecodeError as exc:
+        # second chance with minor normalization for common output errors
+        candidate_fixed = normalize_json_like(candidate_json)
         try:
-            data = json.loads(cleaned)
-        except json.JSONDecodeError:
+            data = json.loads(candidate_fixed)
+        except json.JSONDecodeError as exc2:
             raise HTTPException(
                 status_code=500,
-                detail="Could not parse model response as JSON. Try again.",
+                detail=(
+                    "Could not parse model response as JSON after normalization. "
+                    f"Model output: {raw_text[:1000]!r}. "
+                    f"Candidate JSON: {candidate_json[:1000]!r}. "
+                    f"Fixed candidate: {candidate_fixed[:1000]!r}. "
+                    f"Error1: {str(exc)}. Error2: {str(exc2)}"
+                ),
             )
 
     corrections = [
