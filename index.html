@@ -387,6 +387,16 @@
   const panelBody   = document.getElementById('panel-body');
   const panelEmpty  = document.getElementById('panel-empty');
   const toastEl     = document.getElementById('toast');
+  const ACCESS_KEY = 'cristianomessi';
+  const entered = localStorage.getItem('access_key');
+  if (entered !== ACCESS_KEY) {
+    const guess = prompt('Enter access key:');
+    if (guess !== ACCESS_KEY) {
+      document.body.innerHTML = '<p style="padding:2rem;font-family:sans-serif">Access denied.</p>';
+      throw new Error('Access denied');
+    }
+    localStorage.setItem('access_key', guess);
+  }
 
   function getTime() {
     return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
