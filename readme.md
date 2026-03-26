@@ -2,6 +2,11 @@
 
 A FastAPI backend that powers a Gen Z English tutor using the Claude API.
 
+## Tech stack
+- **Backend:** Python, FastAPI, Anthropic Claude API
+- **Frontend:** Vanilla HTML/CSS/JS
+- **Deployed on:** Railway (API) + Vercel (frontend)
+
 ## Setup
 
 ### 1. Create a virtual environment
@@ -18,7 +23,8 @@ pip install -r requirements.txt
 
 ### 3. Set up your API key
 ```bash
-cp .env.example .env
+cp .env.example .env        # Mac/Linux
+copy .env.example .env      # Windows
 # Now open .env and paste your Anthropic API key
 # Get one at: https://console.anthropic.com/
 ```
@@ -105,3 +111,6 @@ The entire personality lives in `prompt.py`. You can:
 - Add a native language hint (e.g. "The user is a native Portuguese speaker — watch for article errors")
 
 ![alt text](image-1.png)
+
+## Live demo
+[gen-z-agent.vercel.app](https://gen-z-agent.vercel.app)
