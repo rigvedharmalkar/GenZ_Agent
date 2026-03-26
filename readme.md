@@ -103,3 +103,5 @@ The entire personality lives in `prompt.py`. You can:
 - Adjust how many corrections per message (currently max 3)
 - Change the slang style (e.g. more formal corrections, different dialect)
 - Add a native language hint (e.g. "The user is a native Portuguese speaker — watch for article errors")
+
+![alt text](image.png)
