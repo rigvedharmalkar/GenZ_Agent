@@ -1,4 +1,4 @@
-# Gen Z English Tutor — Backend
+# Gen Z English Tutor
 
 A FastAPI backend that powers a Gen Z English tutor using the Claude API.
 
